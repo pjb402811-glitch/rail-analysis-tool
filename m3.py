@@ -1,33 +1,53 @@
+# -*- coding: utf-8 -*-
+# M3: Main App (Router)
+# 실행: streamlit run m3.py
+
 import streamlit as st
-import sys
-import os
+import logging
 
-# 1. 가장 먼저 페이지 설정을 합니다.
-st.set_page_config(page_title="진단 모드")
+# [수정] st.set_page_config는 반드시 다른 모듈(m3_1~4) 임포트보다 '먼저' 실행되어야 합니다.
+# 이 순서가 틀리면 Streamlit Cloud에서 앱이 즉시 종료될 수 있습니다.
+st.set_page_config(
+    page_title="철도 정책 시뮬레이터",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-st.title("🚀 시스템 진단 중...")
+# 로깅 설정
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# 2. 현재 환경 정보 출력
-st.write(f"파이썬 버전: {sys.version}")
-st.write(f"현재 작업 디렉토리: {os.getcwd()}")
-st.write(f"폴더 내 파일 목록: {os.listdir('.')}")
-
-# 3. 핵심 모듈 임포트 시도 및 에러 포착
+# 페이지 설정 이후에 모듈 임포트 진행
 try:
-    st.write("데이터 매니저(m1) 불러오는 중...")
-    from m1 import DataManager
-    st.success("✅ m1 임포트 성공!")
-    
-    st.write("설문 분석기(m6) 불러오는 중...")
-    from m6 import SurveyAnalyzer
-    st.success("✅ m6 임포트 성공!")
-    
-    st.write("PDF 생성기(m5) 불러오는 중...")
-    from m5 import ProjectRecommender
-    st.success("✅ m5 임포트 성공!")
+    from m3_1 import initialize_session_state
+    from m3_2 import draw_landing_page
+    from m3_3 import draw_user_view
+    from m3_4 import draw_admin_view
+except ImportError as e:
+    st.error(f"모듈을 불러오는 중 오류가 발생했습니다. 파일 이름을 확인해주세요: {e}")
+    st.stop()
 
-except Exception as e:
-    st.error("❌ 에러 발생!")
-    st.exception(e)
+# --- 세션 상태 초기화 ---
+# 앱 실행 시 최초 1회만 호출
+initialize_session_state()
 
-st.info("이 화면이 보인다면 서버 연결은 정상입니다. 위 체크리스트 중 '❌'가 뜬 부분을 확인해 주세요.")
+# --- 메인 라우터 ---
+def main():
+    """
+    st.session_state.view_mode에 따라 적절한 UI를 렌더링합니다.
+    """
+    # 세션 상태에서 뷰 모드를 안전하게 가져옴
+    view_mode = st.session_state.get('view_mode', 'landing')
+
+    try:
+        if view_mode == 'user':
+            draw_user_view()
+        elif view_mode == 'admin':
+            draw_admin_view()
+        else: # 'landing' or default
+            draw_landing_page()
+    except Exception as e:
+        st.error(f"화면을 그리는 중 예상치 못한 오류가 발생했습니다: {e}")
+        logging.error(f"Render Error: {e}")
+
+if __name__ == "__main__":
+    main()
